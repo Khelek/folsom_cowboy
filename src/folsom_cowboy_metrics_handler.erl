@@ -50,10 +50,14 @@ terminate(_Reason, _Req, _State) ->
 
 get_metric_data(Id) ->
     case folsom_metrics:get_metric_info(Id) of
-        [{_, [{type, histogram} | _]}] ->
-            [{value, folsom_metrics:get_histogram_statistics(Id)}];
-        _ ->
-            [{value, folsom_metrics:get_metric_value(Id)}]
+        [{_, [{type, histogram}=Type | _]}] ->
+            [Type, {value, folsom_metrics:get_histogram_statistics(Id)}];
+        [{_, [{type, counter} | _]}] ->
+            Value = folsom_metrics:get_metric_value(Id),
+            folsom_metrics:notify(Id, {dec, Value}),
+            [{type, gauge}, {value, Value}];
+        [{_, [{type, _}=Type | _]}] ->
+            [Type, {value, folsom_metrics:get_metric_value(Id)}]
     end.
 
 % @doc Return true if metric with key 'Id' exists, false otherwise
